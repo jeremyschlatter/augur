@@ -28,38 +28,6 @@ export function deepCopy<T>(x: T): T {
   return JSON.parse(JSON.stringify(x));
 }
 
-export interface ParaDeploys {
-  [cashAddress: string]: ParaDeploy;
-}
-
-export interface ParaDeploy {
-  uploadBlockNumber?: number,
-  name: string,
-  decimals: number,
-  addresses: ParaAddresses
-}
-
-export interface SideChain {
-  uploadBlockNumber?: number,
-  name?: string,
-  addresses: SideChainAddresses
-}
-
-export interface SideChainDeploy {
-  name?: string,
-  sideChainExternalAddresses?: SideChainExternalAddresses,
-  specific?: ArbitrumDeploy|MaticDeploy,
-}
-
-export interface ArbitrumDeploy {
-  pushBridge?: string,
-  bridge?: string,
-  marketGetter?: string,
-}
-
-export interface MaticDeploy {
-}
-
 export interface SDKConfiguration {
   networkId: NetworkId,
   uploadBlockNumber?: number,
@@ -157,6 +125,47 @@ export interface SDKConfiguration {
     reportingEnabled?: boolean
   },
   concurrentDBOperationsLimit?: number
+}
+
+export interface ParaDeploys {
+  [cashAddress: string]: ParaDeploy;
+}
+
+export interface ParaDeploy {
+  uploadBlockNumber?: number,
+  name: string,
+  decimals: number,
+  addresses: ParaAddresses
+}
+
+export interface SideChain {
+  name: string,
+  http: string, // the sidechain-specific http(s) endpoint, for contracts deployed to sidechain
+  uploadBlockNumber?: number,
+  addresses?: SideChainAddresses
+}
+
+export type SideChainName = 'test'|'arbitrum'|'matic';
+export function isSideChainName(n: string): n is SideChainName {
+  return ['test', 'arbitrum', 'matic'].includes(n);
+}
+
+export interface SideChainDeploy {
+  name: SideChainName,
+  specific: TestDeploy|ArbitrumDeploy|MaticDeploy,
+  sideChainExternalAddresses?: SideChainExternalAddresses,
+}
+
+export interface ArbitrumDeploy {
+  bridge?: string, // lives on ethereum
+  pushBridge?: string; // lives on ethereum
+}
+
+export interface MaticDeploy {
+}
+
+export interface TestDeploy {
+  pushBridge?: string;
 }
 
 export interface TradingAddresses {
@@ -307,7 +316,7 @@ export const DEFAULT_SDK_CONFIGURATION: SDKConfiguration = {
   logLevel: LoggerLevels.warn,
   averageBlocktime: 2000,
   ethereum: {
-    network: "private",
+    network: 'private',
     http: 'http://localhost:8545',
     ws: 'ws://localhost:8546',
     rpcRetryCount: 5,

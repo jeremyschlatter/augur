@@ -22,6 +22,7 @@ import { FlashArguments, FlashSession } from './flash';
 import { LogReplayer } from './replay-logs';
 import { LogReplayerV1 } from './replay-logs-v1';
 import { sleep } from './util';
+import {mergeConfig, validConfigOrDie} from '@augurproject/utils/build';
 
 export const defaultSeedPath = '/tmp/augur/seed.json';
 
@@ -38,6 +39,7 @@ export function addGanacheScripts(flash: FlashSession) {
     async call(this: FlashSession, args: FlashArguments) {
       const port = Number(args.port) || 8545;
       await startGanacheServer(this.accounts, port);
+      // noinspection InfiniteLoopJS
       while (true) await sleep(1000 * 60 * 60); // keep alive
     },
   });
@@ -117,11 +119,16 @@ export function addGanacheScripts(flash: FlashSession) {
 
       const parasSeed = await createSeed(provider, db, config.addresses, config.uploadBlockNumber, config.paraDeploys);
 
-      console.log('Deploying Arbitrum sidechain but on-chain for ease of testing');
-      config.deploy.sideChain = {
-        name: 'arbitrum',
-      }
-      config.sideChain = await deploySideChainContracts(this.network, provider, this.getAccount(), compilerOutput, config);
+      console.log('Deploying test sidechain but on-chain for ease of testing');
+      config = validConfigOrDie(mergeConfig(config, {
+        deploy: {
+          sideChain: {
+            name: 'test',
+            specific: {}
+          }
+        }
+      }));
+      config = await deploySideChainContracts(this.network, this.getAccount(), compilerOutput, config);
 
       const sidechainSeed = await createSeed(
         provider,

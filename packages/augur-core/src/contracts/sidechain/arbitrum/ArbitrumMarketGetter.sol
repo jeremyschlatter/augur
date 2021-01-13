@@ -12,6 +12,8 @@ contract ArbitrumMarketGetter is IMarketGetter {
     uint256 private reportingFeeDivisor;
     address arbitrumBridgeAddress;
 
+    event EnterPosition(address sender, uint256 cash, uint256 outputShares, bool buyLong, uint256 priorShares);
+
     constructor(address _arbitrumBridgeAddress) public {
         arbitrumBridgeAddress = _arbitrumBridgeAddress;
     }

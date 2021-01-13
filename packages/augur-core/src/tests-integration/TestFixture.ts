@@ -4,7 +4,7 @@ import { ContractCompiler } from '../libraries/ContractCompiler';
 import { ContractDeployer } from '../libraries/ContractDeployer';
 import { ParaContractDeployer } from '../libraries/ParaContractDeployer';
 import { ParaAugurDeployer } from '../libraries/ParaAugurDeployer';
-import { SideChainDeployer } from '../libraries/SideChainDeployer';
+import {accountFromPrivateKey, deploySideChain} from '../libraries/SideChainDeployer';
 import { CompilerConfiguration } from '../libraries/CompilerConfiguration';
 import { ContractDependenciesEthers } from '@augurproject/contract-dependencies-ethers';
 import {
@@ -25,6 +25,7 @@ import {
 import { Dependencies } from '../libraries/GenericContractInterfaces';
 import { EthersFastSubmitWallet } from '../libraries/EthersFastSubmitWallet';
 import { buildConfig } from '@augurproject/artifacts';
+import { Contracts } from '..';
 
 const NULL_ADDRESS = '0x0000000000000000000000000000000000000000';
 const MAX_APPROVAL = new BigNumber(2).pow(256).minus(1);
@@ -84,7 +85,7 @@ export class TestFixture {
             config.ethereum.http
         );
         const signer = await EthersFastSubmitWallet.create(
-            config.deploy.privateKey as string,
+            config.deploy.privateKey,
             provider
         );
         const dependencies = new ContractDependenciesEthers(
@@ -123,32 +124,14 @@ export class TestFixture {
         await paraAugurDeployer.deploy('test', config.addresses.WETH9);
 
         config = buildConfig('test');
-        const sideChainDeployer = new SideChainDeployer(
-            config,
-            dependencies,
-            provider,
-            signer,
-            compiledContracts
-        );
-        await sideChainDeployer.deploy('test');
-
-        /*
-        config = buildConfig('test');
-        const govContractDeployer = new GovernanceDeployer(
-            config,
-            dependencies,
-            provider,
-            signer,
-            compiledContracts
-        );
-        await govContractDeployer.deploy('test', config.addresses.WETH9);
-        */
+        const account = accountFromPrivateKey(config.deploy.privateKey);
+        await deploySideChain('test', config, account, new Contracts(compiledContracts))
 
         return new TestFixture(
             dependencies,
             provider,
             contractDeployer,
-            signer.address
+            account.address
         );
     };
 

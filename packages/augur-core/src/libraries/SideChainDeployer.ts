@@ -1,194 +1,303 @@
-import { ethers } from 'ethers';
+import { ethers, providers } from 'ethers';
 import { BigNumber } from 'bignumber.js';
-import { readFile } from 'async-file';
-import { CompilerOutput } from 'solc';
 import { SideChainAugur, SideChainShareToken, SideChainAugurTrading, SideChainFillOrder, SideChainProfitLoss, SideChainZeroXTrade, SideChainSimulateTrade } from './ContractInterfaces';
 import { stringTo32ByteHex } from './HelperFunctions';
 import { Contracts, ContractData } from './Contracts';
 import { Dependencies } from './GenericContractInterfaces';
-import { SDKConfiguration, mergeConfig, SideChain } from '@augurproject/utils';
+import { SDKConfiguration, mergeConfig, ArbitrumDeploy, TestDeploy, SideChainExternalAddresses, validConfigOrDie, deepCopy } from '@augurproject/utils';
 import { updateConfig } from '@augurproject/artifacts';
 import { Block, BlockTag } from '@ethersproject/providers';
-import {ArbitrumDeploy} from '@augurproject/utils/build';
+import { EthersProvider } from '@augurproject/ethersjs-provider';
+import {EthersFastSubmitWallet} from './EthersFastSubmitWallet';
+import { ContractDependenciesEthers } from '@augurproject/contract-dependencies-ethers';
 
-const CONTRACTS = [
-    'SideChainAugur',
-    'SideChainShareToken',
-    'SideChainAugurTrading',
-    'SideChainFillOrder',
-    'SideChainProfitLoss',
-    'SideChainZeroXTrade',
-    'SideChainSimulateTrade',
-    'Affiliates',
-]
 
-export interface BlockGetter {
+
+interface BlockGetter {
     getBlock(blockHashOrBlockTag: BlockTag | string | Promise<BlockTag | string>, includeTransactions?: boolean): Promise<Block>;
 }
 
-export class SideChainDeployer {
-    private readonly contracts: Contracts;
-    overrides: ethers.PayableOverrides;
-
-    static deployToNetwork = async (env: string, config: SDKConfiguration, dependencies: Dependencies<BigNumber>, provider: BlockGetter, signer: ethers.Signer) => {
-        const compilerOutput = JSON.parse(await readFile(config.deploy.contractInputPath, 'utf8'));
-        const contractDeployer = new SideChainDeployer(config, dependencies, provider, signer, compilerOutput);
-
-        console.log(`\n\n-----------------
-Deploying to: ${env}
-    compiled contracts: ${config.deploy.contractInputPath}
-`);
-        await contractDeployer.deploy(env);
-    };
-
-    constructor(
-        private readonly configuration: SDKConfiguration,
-        private readonly dependencies: Dependencies<BigNumber>,
-        private readonly provider: BlockGetter,
-        private readonly signer: ethers.Signer,
-        compilerOutput: CompilerOutput
-    ) {
-        this.contracts = new Contracts(compilerOutput);
-
-        if (!configuration.deploy) {
-            throw Error('ContractDeployer configuration must include "deploy" config.');
-        } else if (typeof configuration.deploy.externalAddresses === 'undefined') {
-            configuration.deploy.externalAddresses = {};
-        }
+export async function deploySideChain(
+    env: string,
+    config: SDKConfiguration,
+    account: Account,
+    contracts: Contracts,
+): Promise<SDKConfiguration> {
+    config = deepCopy(config);
+    switch (config.deploy?.sideChain?.name) {
+        case 'test': return deployTestSideChain(env, config, account, contracts);
+        case 'arbitrum': return deployArbitrumSideChain(env, config, account, contracts);
+        case 'matic': throw Error('Matic sidechain not yet implemented.')
+        default: throw Error('Must specify deploy.sideChain.name in config.')
     }
+}
 
-    async getBlockNumber(): Promise<number> {
-        return this.provider.getBlock('latest').then( (block) => block.number);
-    }
+async function deployArbitrumSideChain(
+    env: string,
+    config: SDKConfiguration,
+    account: Account,
+    contracts: Contracts,
+): Promise<SDKConfiguration> {
+    const { signer: ethereumSigner } = await setupEthereumDeployer(config, account);
+    const { signer: arbitrumSigner, dependencies: arbitrumDependencies, provider: arbitrumProvider } = await setupSideChainDeployer(config, account);
 
-    async deploy(env: string): Promise<SideChain> {
-        const blockNumber = await this.getBlockNumber();
+    console.log('Deploying contracts to Ethereum, if not yet deployed.');
+    let { pushBridge, bridge } = (config.deploy.sideChain.specific || {}) as ArbitrumDeploy;
+    if (!pushBridge) pushBridge = await construct(config, ethereumSigner, contracts.get('AugurPushBridge'));
+    if (!bridge) bridge = await construct(config, ethereumSigner, contracts.get('ArbitrumBridge'), [pushBridge, config.addresses.Augur]);
 
-        let { sideChainExternalAddresses } = this.configuration.deploy.sideChain;
-        const { name } = this.configuration.deploy.sideChain;
-        const addresses = {};
+    console.log('Deploying contracts to Arbitrum, if not yet deployed.');
+    let { MarketGetter: marketGetter } = config.deploy?.sideChain?.sideChainExternalAddresses || {};
+    if (!marketGetter) marketGetter = await construct(config, arbitrumSigner, contracts.get('ArbitrumMarketGetter'));
 
-        if (!this.configuration.deploy.isProduction) {
-            const sideChainCashAddress = await this.construct(this.contracts.get('Cash'), []);
-            const marketGetter = await this.marketGetter(sideChainCashAddress);
-            sideChainExternalAddresses = {
-                Cash: sideChainCashAddress,
-                MarketGetter: marketGetter,
-                RepFeeTarget: marketGetter,
-                ZeroXExchange: this.configuration.addresses.Exchange
-            }
-        } else if (!sideChainExternalAddresses) {
-            throw new Error('Must provide sidechain external addresses!');
-        }
-
-        for (const contractName of CONTRACTS) {
-            console.log(`Deploying ${contractName}.`);
-            const contract = this.contracts.get(contractName);
-            let constructorArgs = [];
-            if (contractName === 'SideChainAugurTrading') {
-                constructorArgs = [addresses['SideChainAugur']];
-            }
-            const address = await this.construct(contract, constructorArgs);
-            addresses[contractName] = address;
-            console.log(`${contractName} uploaded at address: ${address}`);
-        }
-
-        const sideChainAugur = new SideChainAugur(this.dependencies, addresses['SideChainAugur']);
-        const sideChainAugurTrading = new SideChainAugurTrading(this.dependencies, addresses['SideChainAugurTrading']);
-
-        await sideChainAugur.registerContract(stringTo32ByteHex('Cash'), sideChainExternalAddresses.Cash);
-        await sideChainAugur.registerContract(stringTo32ByteHex('ShareToken'), addresses['SideChainShareToken']);
-        await sideChainAugur.registerContract(stringTo32ByteHex('Affiliates'), addresses['Affiliates']);
-        await sideChainAugur.registerContract(stringTo32ByteHex('MarketGetter'), sideChainExternalAddresses.MarketGetter);
-        await sideChainAugur.registerContract(stringTo32ByteHex('RepFeeTarget'), sideChainExternalAddresses.RepFeeTarget);
-
-        await sideChainAugurTrading.registerContract(stringTo32ByteHex('FillOrder'), addresses['SideChainFillOrder']);
-        await sideChainAugurTrading.registerContract(stringTo32ByteHex('ZeroXTrade'), addresses['SideChainZeroXTrade']);
-        await sideChainAugurTrading.registerContract(stringTo32ByteHex('ProfitLoss'), addresses['SideChainProfitLoss']);
-        await sideChainAugurTrading.registerContract(stringTo32ByteHex('ZeroXExchange'), sideChainExternalAddresses.ZeroXExchange);
-
-        const sideChainShareToken = new SideChainShareToken(this.dependencies, addresses['SideChainShareToken']);
-        const sideChainFillOrder = new SideChainFillOrder(this.dependencies, addresses['SideChainFillOrder']);
-        const sideChainZeroXTrade = new SideChainZeroXTrade(this.dependencies, addresses['SideChainZeroXTrade']);
-        const sideChainProfitLoss = new SideChainProfitLoss(this.dependencies, addresses['SideChainProfitLoss']);
-        const sideChainSimulateTrade = new SideChainSimulateTrade(this.dependencies, addresses['SideChainSimulateTrade']);
-
-        await sideChainShareToken.initialize(sideChainAugur.address);
-        await sideChainFillOrder.initialize(sideChainAugur.address, sideChainAugurTrading.address);
-        await sideChainZeroXTrade.initialize(sideChainAugur.address, sideChainAugurTrading.address);
-        await sideChainProfitLoss.initialize(sideChainAugur.address, sideChainAugurTrading.address);
-        await sideChainSimulateTrade.initialize(sideChainAugur.address, sideChainAugurTrading.address);
-
-        const sideChain: SideChain = {
-            uploadBlockNumber: blockNumber,
-            addresses: {
-                Augur: addresses['SideChainAugur'],
-                Universe: this.configuration.addresses.Universe,
-                ShareToken: addresses['SideChainShareToken'],
-                Cash: sideChainExternalAddresses.Cash,
-                Affiliates: addresses['Affiliates'],
-                AugurTrading: addresses['SideChainAugurTrading'],
-                FillOrder: addresses['SideChainFillOrder'],
-                SimulateTrade: addresses['SideChainSimulateTrade'],
-                ZeroXTrade: addresses['SideChainZeroXTrade'],
-                ProfitLoss: addresses['SideChainProfitLoss'],
-                MarketGetter: sideChainExternalAddresses.MarketGetter,
-                RepFeeTarget: sideChainExternalAddresses.RepFeeTarget
+    config =  validConfigOrDie(mergeConfig(config, {
+        deploy: {
+            sideChain: {
+                sideChainExternalAddresses: {
+                    MarketGetter: marketGetter,
+                },
+                specific: {
+                    bridge,
+                    pushBridge
+                }
             }
         }
-        if (name) sideChain.name = name;
+    }));
 
-        if (this.configuration.deploy.writeArtifacts) {
-            await updateConfig(env, mergeConfig(this.configuration, {
-                sideChain
-            }));
-        }
+    return await deploySideChainCore(env, config, arbitrumDependencies, arbitrumProvider, arbitrumSigner, contracts);
+}
 
-        return sideChain;
+async function deployTestSideChain(
+    env: string,
+    config: SDKConfiguration,
+    account: Account,
+    contracts: Contracts,
+): Promise<SDKConfiguration> {
+    const { signer: ethereumSigner, dependencies: ethereumDependencies, provider: ethereumProvider } = await setupEthereumDeployer(config, account);
+
+    console.log('Deploying contracts to Ethereum, if not yet deployed.');
+    let { pushBridge } = (config.deploy.sideChain.specific || {}) as TestDeploy;
+    let { Cash: cash, MarketGetter: marketGetter } = config.deploy?.sideChain?.sideChainExternalAddresses || {};
+    if (!pushBridge) pushBridge = await construct(config, ethereumSigner, contracts.get('AugurPushBridge'));
+    if (!cash) cash = await construct(config, ethereumSigner, contracts.get('Cash'));
+    if (!marketGetter) {
+        marketGetter = await construct(config, ethereumSigner, contracts.get('TestBridgeContract'), [
+            cash,
+            config.addresses.OICash,
+            config.addresses.Universe,
+            pushBridge
+        ]);
     }
 
-    async marketGetter(sideChainCashAddress: string) {
-        const { name } = this.configuration.deploy.sideChain;
-        if (name === 'arbitrum') {
-            let { pushBridge, bridge, marketGetter } = (this.configuration.deploy.sideChain.specific || {}) as ArbitrumDeploy;
-            if (!pushBridge) pushBridge = await this.construct(this.contracts.get('AugurPushBridge'), []);
-            if (!bridge) bridge = await this.construct(this.contracts.get('ArbitrumBridge'), [pushBridge, this.configuration.addresses.Augur]);
-            if (!marketGetter) marketGetter = await this.construct(this.contracts.get('ArbitrumMarketGetter'), [bridge]);
-            this.configuration.deploy.sideChain.specific = {
-                pushBridge, bridge, marketGetter
+    config =  validConfigOrDie(mergeConfig(config, {
+        deploy: {
+            sideChain: {
+                sideChainExternalAddresses: {
+                    Cash: cash,
+                    MarketGetter: marketGetter,
+                    RepFeeTarget: marketGetter,
+                    ZeroXExchange: config.addresses.Exchange
+                }
             }
-            return marketGetter;
-        } else {
-            const augurPushBridgeAddress = await this.construct(this.contracts.get('AugurPushBridge'), []);
-            return this.construct(this.contracts.get('TestBridgeContract'), [
-                sideChainCashAddress,
-                this.configuration.addresses.OICash,
-                this.configuration.addresses.Universe,
-                augurPushBridgeAddress
-            ]);
         }
+    }));
+
+    return await deploySideChainCore(env, config, ethereumDependencies, ethereumProvider, ethereumSigner, contracts);
+}
+
+async function deploySideChainCore(
+    env: string,
+    config: SDKConfiguration,
+    dependencies: Dependencies<BigNumber>,
+    provider: BlockGetter,
+    signer: ethers.Signer,
+    contracts: Contracts,
+): Promise<SDKConfiguration> {
+    const { Cash: cash, MarketGetter: marketGetter, RepFeeTarget: repFeeTarget } = config.deploy?.sideChain?.sideChainExternalAddresses || {};
+    if (!cash || !marketGetter || repFeeTarget) throw Error('Must populate deploy.sideChain.sideChainExternalAddresses in config.');
+
+    const { name, sideChainExternalAddresses } = config.deploy.sideChain;
+    const uploadBlockNumber = await getBlockNumber(provider);
+
+    const addresses = await deployContracts(config, signer, contracts);
+    await registerSideChainContracts(dependencies, addresses, sideChainExternalAddresses);
+
+    config = validConfigOrDie(mergeConfig(config, { sideChain: {
+        name,
+        uploadBlockNumber,
+        addresses: {
+            Augur: addresses['SideChainAugur'],
+            Universe: config.addresses.Universe,
+            ShareToken: addresses['SideChainShareToken'],
+            Cash: cash,
+            Affiliates: addresses['Affiliates'],
+            AugurTrading: addresses['SideChainAugurTrading'],
+            FillOrder: addresses['SideChainFillOrder'],
+            SimulateTrade: addresses['SideChainSimulateTrade'],
+            ZeroXTrade: addresses['SideChainZeroXTrade'],
+            ProfitLoss: addresses['SideChainProfitLoss'],
+            MarketGetter: marketGetter,
+            RepFeeTarget: repFeeTarget
+        }
+    }}));
+
+    if (config.deploy.writeArtifacts) {
+        await updateConfig(env, config);
     }
 
-    getContractAddress = (contractName: string): string => {
-        if (!this.contracts.has(contractName)) throw new Error(`Contract named ${contractName} does not exist.`);
-        const contract = this.contracts.get(contractName);
-        if (contract.address === undefined) throw new Error(`Contract name ${contractName} has not yet been uploaded.`);
-        return contract.address;
-    };
+    return config;
+}
 
-    private async construct(contract: ContractData, constructorArgs: string[], overrides: ethers.PayableOverrides = null): Promise<string> {
-        overrides = overrides || {};
-        console.log(`Upload contract: ${contract.contractName}`);
+export interface Account {
+    privateKey: string;
+    address: string;
+    initialBalance?: number;
+}
 
-        if (this.configuration.gas?.override) {
-            const { limit, price } = this.configuration.gas;
-            if (limit) overrides.gasLimit = limit;
-            if (price) overrides.gasPrice = price;
-        }
-        const factory = new ethers.ContractFactory(contract.abi, contract.bytecode, this.signer);
-        const contractObj = await factory.deploy(...constructorArgs, overrides);
-        await contractObj.deployed();
-        console.log(`Uploaded contract: ${contract.contractName}: \"${contractObj.address}\"`);
-        return contractObj.address;
+export function accountFromPrivateKey(key: string): Account {
+    key = cleanKey(key);
+    return {
+        privateKey: key,
+        address: ethers.utils.computeAddress(key),
     }
+}
+
+function cleanKey(key: string): string {
+    if (key.slice(0, 2) !== '0x') {
+        key = `0x${key}`;
+    }
+    if (key[key.length - 1] === '\n') {
+        key = key.slice(0, key.length - 1)
+    }
+    return key;
+}
+
+export async function makeSigner(account: Account, provider: EthersProvider) {
+    return EthersFastSubmitWallet.create(account.privateKey, provider);
+}
+
+export function makeDependencies(
+    account: Account,
+    provider: EthersProvider,
+    signer: EthersFastSubmitWallet
+) {
+    return new ContractDependenciesEthers(provider, signer, account.address);
+}
+
+async function setupEthereumDeployer(config: SDKConfiguration, account: Account) {
+    const { http } = config.ethereum || {};
+    if (!http) throw Error('Must specify ethereum.http');
+    return setupDeployer(http, config, account);
+}
+
+async function setupSideChainDeployer(config: SDKConfiguration, account: Account) {
+    const { http } = config.sideChain || {};
+    if (!http) throw Error('Must specify sideChain.http');
+    return setupDeployer(http, config, account);
+}
+
+async function setupDeployer(http: string, config: SDKConfiguration, account: Account) {
+    const { rpcRetryCount, rpcRetryInterval, rpcConcurrency } = config.ethereum;
+    const jsonProvider = new providers.JsonRpcProvider(http);
+    const provider = new EthersProvider(
+        jsonProvider,
+        rpcRetryCount,
+        rpcRetryInterval,
+        rpcConcurrency,
+    );
+    if (config.gas?.override) {
+        if (config.gas?.price) provider.overrideGasPrice = ethers.BigNumber.from(config.gas.price);
+        if (config.gas?.limit) provider.gasLimit = ethers.BigNumber.from(config.gas.limit);
+    }
+
+    const signer = await makeSigner(account, provider);
+    const dependencies = await makeDependencies(account, provider, signer);
+
+    return { signer, dependencies, provider };
+}
+
+interface Addresses { [contractName: string]: string }
+
+async function registerSideChainContracts(
+    dependencies: Dependencies<BigNumber>,
+    addresses: Addresses,
+    sideChainExternalAddresses: SideChainExternalAddresses
+) {
+    const sideChainAugur = new SideChainAugur(dependencies, addresses['SideChainAugur']);
+    const sideChainAugurTrading = new SideChainAugurTrading(dependencies, addresses['SideChainAugurTrading']);
+
+    await sideChainAugur.registerContract(stringTo32ByteHex('Cash'), sideChainExternalAddresses.Cash);
+    await sideChainAugur.registerContract(stringTo32ByteHex('ShareToken'), addresses['SideChainShareToken']);
+    await sideChainAugur.registerContract(stringTo32ByteHex('Affiliates'), addresses['Affiliates']);
+    await sideChainAugur.registerContract(stringTo32ByteHex('MarketGetter'), sideChainExternalAddresses.MarketGetter);
+    await sideChainAugur.registerContract(stringTo32ByteHex('RepFeeTarget'), sideChainExternalAddresses.RepFeeTarget);
+
+    await sideChainAugurTrading.registerContract(stringTo32ByteHex('FillOrder'), addresses['SideChainFillOrder']);
+    await sideChainAugurTrading.registerContract(stringTo32ByteHex('ZeroXTrade'), addresses['SideChainZeroXTrade']);
+    await sideChainAugurTrading.registerContract(stringTo32ByteHex('ProfitLoss'), addresses['SideChainProfitLoss']);
+    await sideChainAugurTrading.registerContract(stringTo32ByteHex('ZeroXExchange'), sideChainExternalAddresses.ZeroXExchange);
+
+    const sideChainShareToken = new SideChainShareToken(dependencies, addresses['SideChainShareToken']);
+    const sideChainFillOrder = new SideChainFillOrder(dependencies, addresses['SideChainFillOrder']);
+    const sideChainZeroXTrade = new SideChainZeroXTrade(dependencies, addresses['SideChainZeroXTrade']);
+    const sideChainProfitLoss = new SideChainProfitLoss(dependencies, addresses['SideChainProfitLoss']);
+    const sideChainSimulateTrade = new SideChainSimulateTrade(dependencies, addresses['SideChainSimulateTrade']);
+
+    await sideChainShareToken.initialize(sideChainAugur.address);
+    await sideChainFillOrder.initialize(sideChainAugur.address, sideChainAugurTrading.address);
+    await sideChainZeroXTrade.initialize(sideChainAugur.address, sideChainAugurTrading.address);
+    await sideChainProfitLoss.initialize(sideChainAugur.address, sideChainAugurTrading.address);
+    await sideChainSimulateTrade.initialize(sideChainAugur.address, sideChainAugurTrading.address);
+}
+
+async function deployContracts(config: SDKConfiguration, signer: ethers.Signer, contracts: Contracts): Promise<Addresses> {
+    console.log('Deploying contracts.')
+    const contractsToDeploy = [
+        'SideChainAugur',
+        'SideChainShareToken',
+        'SideChainAugurTrading',
+        'SideChainFillOrder',
+        'SideChainProfitLoss',
+        'SideChainZeroXTrade',
+        'SideChainSimulateTrade',
+        'Affiliates',
+    ];
+
+    const addresses = {};
+    for (const contractName of contractsToDeploy) {
+        const contract = contracts.get(contractName);
+        const constructorArgsMap = {
+            'SideChainAugurTrading': [ addresses['SideChainAugur'] ],
+        };
+        const constructorArgs = constructorArgsMap[contractName] || [];
+        addresses[contractName] = await construct(config, signer, contract, constructorArgs);
+    }
+    return addresses;
+}
+
+async function construct(
+    config: SDKConfiguration,
+    signer: ethers.Signer,
+    contract: ContractData,
+    constructorArgs: string[] = null,
+    overrides: ethers.PayableOverrides = null
+): Promise<string> {
+    constructorArgs = constructorArgs || [];
+    overrides = overrides || {};
+    console.log(`Upload contract: ${contract.contractName}`);
+
+    if (config.gas?.override) {
+        const {limit, price} = config.gas;
+        if (limit) overrides.gasLimit = limit;
+        if (price) overrides.gasPrice = price;
+    }
+    const factory = new ethers.ContractFactory(contract.abi, contract.bytecode, signer);
+    const contractObj = await factory.deploy(...constructorArgs, overrides);
+    await contractObj.deployed();
+    console.log(`Uploaded contract: ${contract.contractName}: \"${contractObj.address}\"`);
+    return contractObj.address;
+}
+
+async function getBlockNumber(provider: BlockGetter): Promise<number> {
+    return provider.getBlock('latest').then(block => block.number);
 }

@@ -5,7 +5,7 @@
   "averageBlocktime": 2000,
   "ethereum": {
     "network": "private",
-    "http": "https://kovan2.arbitrum.io/rpc",
+    "http": "https://kovan3.arbitrum.io/rpc",
     "ws": "ws://localhost:8546",
     "rpcRetryCount": 5,
     "rpcRetryInterval": 0,
@@ -22,8 +22,7 @@
     "normalTime": true,
     "writeArtifacts": true,
     "serial": true,
-    "externalAddresses": {},
-    "arbitrum": true
+    "externalAddresses": {}
   },
   "warpSync": {
     "createCheckpoints": false,

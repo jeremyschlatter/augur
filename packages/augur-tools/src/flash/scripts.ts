@@ -87,6 +87,7 @@ import {
 } from './util';
 
 import {deployPara, deployParaContracts, deploySideChainContracts} from '../libs/blockchain';
+import {isSideChainName} from '@augurproject/utils/build';
 
 // tslint:disable-next-line:import-blacklist
 const compilerOutput = require('@augurproject/artifacts/build/contracts.json');
@@ -156,10 +157,10 @@ export function addScripts(flash: FlashSession) {
       'Upload contracts to sidechain and register them.',
     options: [
       {
-        name: 'parallel',
-        abbr: 'p',
-        description: 'deploy contracts non-serially',
-        flag: true,
+        name: 'name',
+        abbr: 'n',
+        description: 'Which sidechain. Once of: test, arbitrum, matic.',
+        required: true,
       },
       {
         name: 'cash',
@@ -183,7 +184,7 @@ export function addScripts(flash: FlashSession) {
       },
     ],
     async call(this: FlashSession, args: FlashArguments) {
-      const serial = !Boolean(args.parallel);
+      const name = String(args.name);
       const cash = args.cash as string;
       const marketGetter = args.marketGetter as string;
       const repFeeTarget = args.repFeeTarget as string;
@@ -191,7 +192,8 @@ export function addScripts(flash: FlashSession) {
 
       if (this.noProvider()) return;
 
-      this.pushConfig({ deploy: { serial }});
+      if (!isSideChainName(name)) return console.error(`Invalid sidechain name "${name}"`);
+      this.pushConfig({ deploy: { sideChain: { name } }});
 
       if (cash && marketGetter && repFeeTarget && zeroXExchange) {
         this.pushConfig({
@@ -201,11 +203,8 @@ export function addScripts(flash: FlashSession) {
                 Cash: cash,
                 MarketGetter: marketGetter,
                 RepFeeTarget: repFeeTarget,
-                ZeroXExchange: zeroXExchange,
-              }
-            }
-          }
-        })
+                ZeroXExchange: zeroXExchange
+        }}}});
       } else if (cash || marketGetter || repFeeTarget || zeroXExchange) {
         throw Error('Must specify all of or none of the sidechain external addresses, not some.');
       }
@@ -214,7 +213,6 @@ export function addScripts(flash: FlashSession) {
 
       await deploySideChainContracts(
         this.network,
-        this.provider,
         this.accounts[0],
         compilerOutput,
         this.config
