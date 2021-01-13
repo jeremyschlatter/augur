@@ -110,7 +110,7 @@ export const ENTER_AMOUNT = 'Enter Amount';
 export const ERROR_AMOUNT = 'Amount is not valid';
 export const CONNECT_ACCOUNT = 'Connect Account';
 
-export const SETTINGS_SLIPPAGE = "0.5"
+export const SETTINGS_SLIPPAGE = '0.5';
 // graph market status
 export const MARKET_STATUS = {
   TRADING: 'TRADING',
@@ -237,6 +237,8 @@ export const CREATE = 'create';
 export const LIQUIDITY_STRINGS = {
   [REMOVE]: {
     header: 'remove liquidity',
+    footerText:
+      'Need some copy here explaining why the user may recieve some shares when they remove their liquidity and they would need to sell these if possible.',
     showTradingFee: false,
     amountSubtitle: 'How much do you want to remove?',
     receiveTitle: 'What you will recieve',
@@ -252,10 +254,11 @@ export const LIQUIDITY_STRINGS = {
     },
     confirmReceiveOverview: {
       title: 'What you will recieve',
-    }
+    },
   },
   [ADD]: {
     header: 'add liquidity',
+    footerText: `By adding liquidity you'll earn ${percentFormatted} of all trades on this market proportional to your share of the pool. Fees are added to the pool, accrue in real time and can be claimed by withdrawing your liquidity.`,
     showTradingFee: true,
     setOdds: true,
     setOddsTitle: 'Current Odds',
@@ -270,10 +273,12 @@ export const LIQUIDITY_STRINGS = {
     },
     marketLiquidityDetails: {
       title: 'Market liquidity details',
-    }
+    },
   },
   [CREATE]: {
     showCurrencyDropdown: true,
+    footerText:
+      "By adding initial liquidity you'll earn your set trading fee percentage of all trades on this market proportional to your share of the pool. Fees are added to the pool, accrue in real time and can be claimed by withdrawing your liquidity.",
     header: 'add liquidity',
     showTradingFee: false,
     setTradingFee: true,
@@ -291,6 +296,6 @@ export const LIQUIDITY_STRINGS = {
     },
     marketLiquidityDetails: {
       title: 'market liquidity details',
-    }
-  }
-}
+    },
+  },
+};
