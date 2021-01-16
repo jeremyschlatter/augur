@@ -13,6 +13,9 @@
     },
     {
       "path": "../augur-contract-dependencies-ethers"
+    },
+    {
+      "path": "../ethersjs-provider"
     }
   ]
 }

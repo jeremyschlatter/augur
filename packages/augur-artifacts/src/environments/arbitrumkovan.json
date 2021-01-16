@@ -5,7 +5,7 @@
   "averageBlocktime": 2000,
   "ethereum": {
     "network": "private",
-    "http": "https://kovan3.arbitrum.io/rpc",
+    "http": "https://kovan.infura.io/v3/595111ad66e2410784d484708624f7b1",
     "ws": "ws://localhost:8546",
     "rpcRetryCount": 5,
     "rpcRetryInterval": 0,
@@ -22,7 +22,20 @@
     "normalTime": true,
     "writeArtifacts": true,
     "serial": true,
-    "externalAddresses": {}
+    "externalAddresses": {},
+    "sideChain": {
+      "name": "arbitrum",
+      "specific": {
+        "bridge": "0x288d2836000afc93c11fBA001ca867D66d3Bf601",
+        "pushBridge": "0xf693eF53b46333C6EAbF31442cACc070591aeA30"
+      },
+      "sideChainExternalAddresses": {
+        "MarketGetter": "0xc6e08b7adb9fccd055105a12d7d84c398d37193f",
+        "Cash": "0xbb5999bCD565C0393268bD1eD25F0CC088df9DAA",
+        "RepFeeTarget": "0xc6e08b7adb9fccd055105a12d7d84c398d37193f",
+        "ZeroXExchange": "0x4eacd0aF335451709e1e7B570B8Ea68EdEC8bc97"
+      }
+    }
   },
   "warpSync": {
     "createCheckpoints": false,
@@ -119,20 +132,22 @@
   },
   "sideChain": {
     "name": "arbitrum",
-    "uploadBlockNumber": 22428064,
+    "uploadBlockNumber": 23028693,
     "addresses": {
-      "Augur": "0x1069D7A1efe70473e47FD490253EA84ddbEb26aa",
+      "Augur": "0xfbcaE11b4dAce55262dC8338Ca16d2A0c4a73630",
       "Universe": "0x48CB0042B1c0AE139Fd6b83481613a10Af4a32A8",
-      "ShareToken": "0x61d2A938201BeF4B19efa5CE3BBD5cAc140Ebc31",
-      "Cash": "0x63F726c426dcFe35d4Fb63584B23EB224Df8C47e",
-      "Affiliates": "0x4A706aFd07413935309a4527c4192Ac54FD4e346",
-      "AugurTrading": "0xedED96bc60DBe341bcd532ef3502C550b414e033",
-      "FillOrder": "0xFC64CBfcC751C0999d9002d744e57c18f1def34c",
-      "SimulateTrade": "0x3c53f7E8D07e689205b4758d7f32c11B1Ed0b382",
-      "ZeroXTrade": "0xFAA1C9E7dd9F4EbC61745Fc62D02E54735cDE210",
-      "ProfitLoss": "0x90b1045ea7A5EE03F680293a1485794f51575793",
-      "MarketGetter": "0x6a3aef47eFCA6bD539B0C703909d86B1B863e87b",
-      "RepFeeTarget": "0x6a3aef47eFCA6bD539B0C703909d86B1B863e87b"
-    }
+      "ShareToken": "0x97Fa0F7176059a7eb86163Ef174D19c47907b447",
+      "Cash": "0xbb5999bCD565C0393268bD1eD25F0CC088df9DAA",
+      "Affiliates": "0xf13E779f39E51007e10F70d36a07451092392f81",
+      "AugurTrading": "0x8F0156027c53Afac4Ccce7b24674288B6E9Bd00f",
+      "FillOrder": "0x1bBd6B9D6842853221438365a2b0b39DE0873D0B",
+      "SimulateTrade": "0xCE56596A6C5cCaB39fF9F9cE4FAF6418c980Df9E",
+      "ZeroXTrade": "0x5444775cF62deC8C21FefcA29BC42f8f17F25640",
+      "ProfitLoss": "0x9b94866eDd42C2d1A5594fCEe2937586C9936FaC",
+      "MarketGetter": "0xc6e08b7adb9fccd055105a12d7d84c398d37193f",
+      "RepFeeTarget": "0xc6e08b7adb9fccd055105a12d7d84c398d37193f",
+      "ZeroXExchange": "0x4eacd0aF335451709e1e7B570B8Ea68EdEC8bc97"
+    },
+    "http": "https://kovan3.arbitrum.io/rpc"
   }
 }

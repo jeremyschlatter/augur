@@ -160,7 +160,11 @@ export function addScripts(flash: FlashSession) {
         name: 'name',
         abbr: 'n',
         description: 'Which sidechain. Once of: test, arbitrum, matic.',
-        required: true,
+      },
+      {
+        name: 'http',
+        abbr: 'h',
+        description: 'Sidechain http(s) node to use for sidechain-side contracts.',
       },
       {
         name: 'cash',
@@ -184,7 +188,8 @@ export function addScripts(flash: FlashSession) {
       },
     ],
     async call(this: FlashSession, args: FlashArguments) {
-      const name = String(args.name);
+      const name = args.name as string || this.config?.deploy?.sideChain?.name;
+      const http = args.http as string || this.config?.sideChain?.http;
       const cash = args.cash as string;
       const marketGetter = args.marketGetter as string;
       const repFeeTarget = args.repFeeTarget as string;
@@ -193,7 +198,11 @@ export function addScripts(flash: FlashSession) {
       if (this.noProvider()) return;
 
       if (!isSideChainName(name)) return console.error(`Invalid sidechain name "${name}"`);
-      this.pushConfig({ deploy: { sideChain: { name } }});
+      if (!http && name !== 'test') return console.error('Must specify sidechain http node (-h).');
+      this.pushConfig({
+        deploy: { sideChain: { name }},
+        sideChain: { http },
+      });
 
       if (cash && marketGetter && repFeeTarget && zeroXExchange) {
         this.pushConfig({

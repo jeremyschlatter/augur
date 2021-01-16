@@ -258,6 +258,7 @@ export interface SideChainAddresses {
   ProfitLoss?: string;
   MarketGetter?: string;
   RepFeeTarget?: string;
+  ZeroXExchange?: string;
 }
 
 export interface GovernanceAddresses {
