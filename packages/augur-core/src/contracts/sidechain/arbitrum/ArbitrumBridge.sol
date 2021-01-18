@@ -22,7 +22,7 @@ contract ArbitrumBridge {
     constructor(address _pushBridgeAddress, IAugur _augur) public {
         augurPushBridge = IAugurPushBridge(_pushBridgeAddress);
         augur = _augur;
-
+        owner = msg.sender;
     }
 
     function registerArbchain(address _arbChainAddress, address _inboxAddress, address _marketGetterAddress) external isOwner returns (bool) {

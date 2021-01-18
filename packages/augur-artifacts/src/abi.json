@@ -44560,6 +44560,43 @@
 			"type": "constructor"
 		},
 		{
+			"anonymous": false,
+			"inputs": [
+				{
+					"indexed": false,
+					"internalType": "address",
+					"name": "sender",
+					"type": "address"
+				},
+				{
+					"indexed": false,
+					"internalType": "uint256",
+					"name": "cash",
+					"type": "uint256"
+				},
+				{
+					"indexed": false,
+					"internalType": "uint256",
+					"name": "outputShares",
+					"type": "uint256"
+				},
+				{
+					"indexed": false,
+					"internalType": "bool",
+					"name": "buyLong",
+					"type": "bool"
+				},
+				{
+					"indexed": false,
+					"internalType": "uint256",
+					"name": "priorShares",
+					"type": "uint256"
+				}
+			],
+			"name": "EnterPosition",
+			"type": "event"
+		},
+		{
 			"constant": true,
 			"inputs": [
 				{

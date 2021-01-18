@@ -87,7 +87,8 @@ import {
 } from './util';
 
 import {deployPara, deployParaContracts, deploySideChainContracts} from '../libs/blockchain';
-import {isSideChainName} from '@augurproject/utils/build';
+import {ArbitrumDeploy, isSideChainName} from '@augurproject/utils/build';
+import {bridgeMarketToArbitrum, registerArbitrumChain} from '@augurproject/core/build/libraries/SideChainDeployer';
 
 // tslint:disable-next-line:import-blacklist
 const compilerOutput = require('@augurproject/artifacts/build/contracts.json');
@@ -159,12 +160,17 @@ export function addScripts(flash: FlashSession) {
       {
         name: 'name',
         abbr: 'n',
-        description: 'Which sidechain. Once of: test, arbitrum, matic.',
+        description: 'Which sidechain. Once of: test, arbitrum, matic',
       },
       {
         name: 'http',
         abbr: 'h',
         description: 'Sidechain http(s) node to use for sidechain-side contracts.',
+      },
+      {
+        name: 'chainAddress',
+        abbr: 'a',
+        description: 'Used for Arbitrum.',
       },
       {
         name: 'cash',
@@ -186,6 +192,11 @@ export function addScripts(flash: FlashSession) {
         abbr: 'Z',
         description: 'ZeroXExchange address for sidechain. Can specify in config under deploy.sideChainExternalAddresses',
       },
+      {
+        name: 'globalInbox',
+        abbr: 'G',
+        description: 'GlobalInbox address for Arbitrum. Can specify in config under deploy.specific.globalInbox',
+      },
     ],
     async call(this: FlashSession, args: FlashArguments) {
       const name = args.name as string || this.config?.deploy?.sideChain?.name;
@@ -195,10 +206,38 @@ export function addScripts(flash: FlashSession) {
       const repFeeTarget = args.repFeeTarget as string;
       const zeroXExchange = args.zeroXExchange as string;
 
+      if (!isSideChainName(name)) {
+        return console.error(`Must specify valid sidechain name in flash call or config, not: ${name}`);
+      }
+
+      if (!http && name !== 'test') return console.error('Must specify sidechain http node (-h).');
+
+      if (name === 'arbitrum') {
+        const specific = this.config?.deploy?.sideChain?.specific as ArbitrumDeploy;
+        const globalInbox = args.globalInbox as string || specific?.globalInbox;
+        const chainAddress = args.chainAddress as string || specific?.arbChain;
+
+        if (!globalInbox) {
+          return console.error('Must specify sidechain globalInbox in flash call or config, if using arbitrum.')
+        }
+        if (!chainAddress) {
+          return console.error('Must specify sidechain chainAddress in flash call or config, if using arbitrum.')
+        }
+
+        this.pushConfig({
+          deploy: {
+            sideChain: {
+                specific: {
+                    arbChain: chainAddress,
+                    globalInbox,
+                  },
+              },
+          },
+        });
+      }
+
       if (this.noProvider()) return;
 
-      if (!isSideChainName(name)) return console.error(`Invalid sidechain name "${name}"`);
-      if (!http && name !== 'test') return console.error('Must specify sidechain http node (-h).');
       this.pushConfig({
         deploy: { sideChain: { name }},
         sideChain: { http },
@@ -227,6 +266,44 @@ export function addScripts(flash: FlashSession) {
         this.config
       );
     },
+  });
+
+  flash.addScript({
+    name: 'register-arbchain',
+    description:
+      'Reflect a market onto a sidechain.',
+    async call(this: FlashSession) {
+      await registerArbitrumChain(this.config, this.accounts[0])
+    }
+  });
+
+  flash.addScript({
+    name: 'bridge-market',
+    description:
+      'Reflect a market onto a sidechain.',
+    options: [
+      {
+        name: 'name',
+        abbr: 'n',
+        description: 'Which sidechain. Once of: test, arbitrum, matic.',
+      },
+      {
+        name: 'market',
+        abbr: 'm',
+        description: 'Sidechain http(s) node to use for sidechain-side contracts.',
+        required: true
+      },
+    ],
+    async call(this: FlashSession, args: FlashArguments) {
+      const name = args.name as string || this.config?.deploy?.sideChain?.name;
+      const market = args.market as string;
+
+      if (!isSideChainName(name)) {
+        return console.error(`Must specify valid sidechain name in flash call or config, not: ${name}`);
+      }
+
+      await bridgeMarketToArbitrum(this.config, this.accounts[0], market)
+    }
   });
 
   flash.addScript({

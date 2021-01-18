@@ -142,8 +142,17 @@ export interface SideChain {
   name: string,
   http: string, // the sidechain-specific http(s) endpoint, for contracts deployed to sidechain
   uploadBlockNumber?: number,
-  addresses?: SideChainAddresses
+  addresses?: SideChainAddresses,
+  specific?: SpecificTest|SpecificArbitrum|SpecificMatic;
 }
+
+export interface SpecificTest {}
+export interface SpecificArbitrum {
+  arbChain?: string
+  globalInbox?: string
+}
+export interface SpecificMatic {}
+
 
 export type SideChainName = 'test'|'arbitrum'|'matic';
 export function isSideChainName(n: string): n is SideChainName {
@@ -157,8 +166,10 @@ export interface SideChainDeploy {
 }
 
 export interface ArbitrumDeploy {
-  bridge?: string, // lives on ethereum
+  arbChain?: string; // not a contract
+  bridge?: string; // lives on ethereum
   pushBridge?: string; // lives on ethereum
+  globalInbox?: string; // lives on ethereum
 }
 
 export interface MaticDeploy {
@@ -259,6 +270,8 @@ export interface SideChainAddresses {
   MarketGetter?: string;
   RepFeeTarget?: string;
   ZeroXExchange?: string;
+  Bridge?: string; // on ethereum
+  ArbChain?: string; // not a contract
 }
 
 export interface GovernanceAddresses {

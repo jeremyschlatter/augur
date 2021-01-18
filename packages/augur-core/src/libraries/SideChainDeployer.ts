@@ -1,7 +1,7 @@
 import { ethers, providers } from 'ethers';
 import { BigNumber } from 'bignumber.js';
 
-import { SDKConfiguration, mergeConfig, ArbitrumDeploy, TestDeploy, SideChainExternalAddresses, validConfigOrDie, deepCopy } from '@augurproject/utils';
+import { SDKConfiguration, mergeConfig, ArbitrumDeploy, TestDeploy, SideChainExternalAddresses, validConfigOrDie, deepCopy, SpecificArbitrum } from '@augurproject/utils';
 import { EthersProvider } from '@augurproject/ethersjs-provider';
 import { updateConfig, abi as ABI } from '@augurproject/artifacts';
 import { Block, BlockTag } from '@ethersproject/providers';
@@ -46,9 +46,12 @@ async function deployArbitrumSideChain(
     const { signer: arbitrumSigner, dependencies: arbitrumDependencies, provider: arbitrumProvider } = await setupSideChainDeployer(config, account, ARBITRUM_OVERRIDES);
 
     console.log('Deploying contracts to Ethereum, if not yet deployed.');
-    let { pushBridge, bridge } = (config.deploy.sideChain.specific || {}) as ArbitrumDeploy;
+    const specific: ArbitrumDeploy = (config.deploy.sideChain.specific || {}) as ArbitrumDeploy;
+    let { pushBridge, bridge } = specific;
+    const { arbChain, globalInbox } = specific;
     if (!pushBridge) pushBridge = await construct(config, ethereumSigner, contracts.get('AugurPushBridge'));
     if (!bridge) bridge = await construct(config, ethereumSigner, contracts.get('ArbitrumBridge'), [pushBridge, config.addresses.Augur]);
+    if (!arbChain) throw Error('Must specify deploy.sideChain.specific.arbChain in config.')
 
     console.log('Deploying contracts to Arbitrum, if not yet deployed.');
     let { MarketGetter: marketGetter } = config?.sideChain?.addresses || {};
@@ -57,10 +60,6 @@ async function deployArbitrumSideChain(
     config =  validConfigOrDie(mergeConfig(config, {
         deploy: {
             sideChain: {
-                specific: {
-                    bridge,
-                    pushBridge
-                },
                 sideChainExternalAddresses: {
                     MarketGetter: marketGetter,
                     Cash: config.addresses.OICash, // TODO must reflect the oicash for this collateral, in the matching para
@@ -74,11 +73,22 @@ async function deployArbitrumSideChain(
                 MarketGetter: marketGetter,
                 Cash: config.addresses.OICash, // TODO must reflect the oicash for this collateral, in the matching para
                 RepFeeTarget: marketGetter, // TODO is this correct?
-                ZeroXExchange: config.addresses.Exchange // TODO is this correct?
-
+                ZeroXExchange: config.addresses.Exchange, // TODO is this correct?
+                Bridge: bridge,
+            },
+            specific: {
+                arbChain,
             }
         }
     }));
+
+    if (globalInbox) {
+        console.log('Registering global inbox and arbitrum chain address with bridge.')
+        const bridgeContract = new ArbitrumBridge(bridge, ethereumSigner);
+        await bridgeContract.registerArbchain(arbChain, globalInbox, marketGetter);
+    } else {
+        console.log('No global inbox provided so NOT registering with bridge.')
+    }
 
     return await deploySideChainCore(env, config, arbitrumDependencies, arbitrumProvider, arbitrumSigner, contracts, ARBITRUM_OVERRIDES);
 }
@@ -469,5 +479,49 @@ class SideChainSimulateTrade implements Contract, Initializeable2 {
 
     async initialize(address1: string, address2: string, overrides?: ethers.Overrides) {
         await initialize2(this.contract, address1, address2, overrides)
+    }
+}
+
+export async function registerArbitrumChain(config: SDKConfiguration, account: Account) {
+    const { signer } = await setupEthereumDeployer(config, account, {});
+    const marketGetterAddress = config.sideChain.addresses.MarketGetter;
+    const { arbChain, globalInbox } = config.sideChain.specific as SpecificArbitrum;
+    const bridgeAddress = config.sideChain.addresses.Bridge;
+    const bridge = new ArbitrumBridge(bridgeAddress, signer);
+    await bridge.registerArbchain(arbChain, globalInbox, marketGetterAddress);
+}
+
+export async function bridgeMarketToArbitrum(config: SDKConfiguration, account: Account, marketAddress: string) {
+    const { signer } = await setupEthereumDeployer(config, account, {});
+    const bridgeAddress = config.sideChain.addresses.Bridge;
+    const arbChainAddress = (config.sideChain.specific as SpecificArbitrum).arbChain;
+    const bridge = new ArbitrumBridge(bridgeAddress, signer);
+    const { gasPrice, gasLimit } = ARBITRUM_OVERRIDES;
+    await bridge.pushBridgeData(marketAddress, arbChainAddress, new BigNumber(gasPrice), new BigNumber(gasLimit));
+}
+
+class ArbitrumBridge implements Contract {
+    readonly abi: ethers.ContractInterface = ABI['ArbitrumBridge'];
+    readonly contract: ethers.Contract;
+
+    constructor(
+        readonly address: string,
+        readonly signerOrProvider: SignerOrProvider
+    ) {
+        this.contract = new ethers.Contract(address, this.abi, signerOrProvider);
+    }
+
+    async registerArbchain(arbChainAddress: string, inboxAddress: string, marketGetterAddress: string, overrides?: ethers.Overrides) {
+        await this.contract.registerArbchain(arbChainAddress, inboxAddress, marketGetterAddress, overrides || {});
+    }
+
+    async pushBridgeData(marketAddress: string, arbChainAddress: string, arbGasPrice: BigNumber, arbGasLimit: BigNumber, overrides?: ethers.Overrides) {
+        await this.contract.pushBridgeData(
+            marketAddress,
+            arbChainAddress,
+            ethers.BigNumber.from(arbGasPrice.toFixed()),
+            ethers.BigNumber.from(arbGasLimit.toFixed()),
+            overrides || {},
+        )
     }
 }
