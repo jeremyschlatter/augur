@@ -63,7 +63,7 @@ async function deployArbitrumSideChain(
                 sideChainExternalAddresses: {
                     MarketGetter: marketGetter,
                     Cash: config.addresses.OICash, // TODO must reflect the oicash for this collateral, in the matching para
-                    RepFeeTarget: marketGetter, // TODO is this correct?
+                    RepFeeTarget: marketGetter,
                     ZeroXExchange: config.addresses.Exchange // TODO is this correct?
                 }
             }
@@ -72,7 +72,7 @@ async function deployArbitrumSideChain(
             addresses: {
                 MarketGetter: marketGetter,
                 Cash: config.addresses.OICash, // TODO must reflect the oicash for this collateral, in the matching para
-                RepFeeTarget: marketGetter, // TODO is this correct?
+                RepFeeTarget: marketGetter,
                 ZeroXExchange: config.addresses.Exchange, // TODO is this correct?
                 Bridge: bridge,
             },
