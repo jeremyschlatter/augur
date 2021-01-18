@@ -80,7 +80,7 @@ const defaultAddLiquidityBreakdown = [
   },
   {
     label: 'liquidity shares',
-    value: '0',
+    value: `0`,
   },
 ];
 
@@ -186,7 +186,6 @@ const ModalAddLiquidity = ({
   const [showBackView, setShowBackView] = useState(false);
   const [chosenCash, updateCash] = useState<string>(currency ? currency : USDC);
   const [buttonError, updateButtonError] = useState('');
-  let isApproved = true;
   // needs to be set by currency picker if amm is null
   const [breakdown, setBreakdown] = useState(defaultAddLiquidityBreakdown);
   const [estimatedLpAmount, setEstimatedLpAmount] = useState<string>('0');
@@ -200,6 +199,12 @@ const ModalAddLiquidity = ({
       : Object.values(cashes)[0];
   }, [chosenCash]);
 
+  const isApproved =
+    account && approvals
+      ? modalType === REMOVE
+        ? approvals?.liquidity?.remove[cash?.name]
+        : approvals?.liquidity?.add[cash?.name]
+      : true;
   const userTokenBalance = cash?.name ? balances[cash?.name]?.balance : '0';
   const shareBalance =
     balances &&
@@ -274,21 +279,7 @@ const ModalAddLiquidity = ({
     outcomes[YES_OUTCOME_ID]?.price,
     outcomes[NO_OUTCOME_ID]?.price,
   ]);
-  if (account && approvals) {
-    if (modalType === REMOVE) {
-      if (approvals?.liquidity?.remove[cash?.name]) {
-        isApproved = true;
-      } else {
-        isApproved = false;
-      }
-    } else if (modalType === ADD) {
-      if (approvals?.liquidity?.add[cash?.name]) {
-        isApproved = true;
-      } else {
-        isApproved = false;
-      }
-    }
-  }
+
   const InputFormError = useMemo(() => {
     if (errorMessage) return errorMessage;
     if (!amount || amount === '0') return ENTER_AMOUNT;
