@@ -28,7 +28,7 @@
       "specific": {
         "arbChain": "0x2e8aF9f74046D3E55202Fcfb893348316B142230",
         "pushBridge": "0xf693eF53b46333C6EAbF31442cACc070591aeA30",
-        "globalInbox": "0x3699d9ce43AF973C14D28BD301aee88864e3895c"
+        "globalInbox": "0xE681857DEfE8b454244e701BA63EfAa078d7eA85"
       },
       "sideChainExternalAddresses": {
         "MarketGetter": "0xc6e08b7adb9fccd055105a12d7d84c398d37193f",
@@ -133,27 +133,27 @@
   },
   "sideChain": {
     "name": "arbitrum",
-    "uploadBlockNumber": 23055844,
+    "uploadBlockNumber": 23108729,
     "addresses": {
-      "Augur": "0x33A3D856EE4D309D761D5931DE93ffe5Fbf790C3",
+      "Augur": "0x4aC7deEeb7147c6D6C478459eC9D2417bFE53aee",
       "Universe": "0x48CB0042B1c0AE139Fd6b83481613a10Af4a32A8",
-      "ShareToken": "0xb74491f44499dbB5bb3bDDfBD8B482A17b76252d",
+      "ShareToken": "0x6CA0E20DeCB21091A94F7F9fa7a1673B56d56642",
       "Cash": "0xbb5999bCD565C0393268bD1eD25F0CC088df9DAA",
-      "Affiliates": "0x7FFDEEF7036EFF356416A827F881294d5F7C3F17",
-      "AugurTrading": "0x879f33805e088c8400BC10413c38844aC2818256",
-      "FillOrder": "0x661217500efc84F2CfbDC37cEbafadAC4e3d5107",
-      "SimulateTrade": "0x33e1FC383252541F14a57F29a2aDc159C08044aa",
-      "ZeroXTrade": "0x39607eed02f570AdC7D29Be6d7C6bF4C8D35051A",
-      "ProfitLoss": "0xF1e3C2e0A3CB38A8d98653E1E844c24549BaE518",
+      "Affiliates": "0x4AB9DE35F343F8c749e70A7Bc536F11Fb1C99B35",
+      "AugurTrading": "0x38d932BF17cbEc2342be156b6417d0109A21A06E",
+      "FillOrder": "0x5AA3fc8b88C6F6F86dc884b39fabAe2A9A51fba0",
+      "SimulateTrade": "0xF1623CEE2DFa4EDeD249B8559313B0f18cef2525",
+      "ZeroXTrade": "0x196619C4622CBFE00d8324F8380D2721Cc1fc778",
+      "ProfitLoss": "0xc53F48a485f67B5236a34a7645773763fE159C2D",
       "MarketGetter": "0xc6e08b7adb9fccd055105a12d7d84c398d37193f",
       "RepFeeTarget": "0xc6e08b7adb9fccd055105a12d7d84c398d37193f",
       "ZeroXExchange": "0x4eacd0aF335451709e1e7B570B8Ea68EdEC8bc97",
-      "Bridge": "0x4c48daBF611E0597600925b6B5DFdB53A6aF8c5F"
+      "Bridge": "0xC6c47032f0D6cFf6e5a813707048E956e19f01eE"
     },
     "http": "https://kovan3.arbitrum.io/rpc",
     "specific": {
       "arbChain": "0x2e8aF9f74046D3E55202Fcfb893348316B142230",
-      "globalInbox": "0x3699d9ce43AF973C14D28BD301aee88864e3895c"
+      "globalInbox": "0xE681857DEfE8b454244e701BA63EfAa078d7eA85"
     }
   }
 }

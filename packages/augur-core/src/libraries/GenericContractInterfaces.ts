@@ -17774,21 +17774,9 @@ export class ArbitrumBridge<TBigNumber> extends Contract<TBigNumber> {
 		return <string>result[0]
 	}
 
-	public pushBridgeData = async (marketAddress: string, arbChainAddress: string, arbGasPrice: TBigNumber, arbGasLimit: TBigNumber, options?: { sender?: string }): Promise<Array<Event>> => {
-		options = options || {}
-		const abi: AbiFunction = {"constant":false,"inputs":[{"internalType":"address","name":"_marketAddress","type":"address"},{"internalType":"address","name":"_arbChainAddress","type":"address"},{"internalType":"uint256","name":"_arbGasPrice","type":"uint256"},{"internalType":"uint256","name":"_arbGasLimit","type":"uint256"}],"name":"pushBridgeData","outputs":[{"internalType":"bool","name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}
-		return await this.remoteCall(abi, [marketAddress, arbChainAddress, arbGasPrice, arbGasLimit], 'pushBridgeData', options.sender)
-	}
-
-	public pushBridgeData_estimateGas = async (marketAddress: string, arbChainAddress: string, arbGasPrice: TBigNumber, arbGasLimit: TBigNumber, options?: { sender?: string }): Promise<TBigNumber> => {
-		options = options || {}
-		const abi: AbiFunction = {"constant":false,"inputs":[{"internalType":"address","name":"_marketAddress","type":"address"},{"internalType":"address","name":"_arbChainAddress","type":"address"},{"internalType":"uint256","name":"_arbGasPrice","type":"uint256"},{"internalType":"uint256","name":"_arbGasLimit","type":"uint256"}],"name":"pushBridgeData","outputs":[{"internalType":"bool","name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}
-		return await this.estimateGas(abi, [marketAddress, arbChainAddress, arbGasPrice, arbGasLimit], 'pushBridgeData', options.sender)
-	}
-
 	public pushBridgeData_ = async (marketAddress: string, arbChainAddress: string, arbGasPrice: TBigNumber, arbGasLimit: TBigNumber, options?: { sender?: string }): Promise<boolean> => {
 		options = options || {}
-		const abi: AbiFunction = {"constant":false,"inputs":[{"internalType":"address","name":"_marketAddress","type":"address"},{"internalType":"address","name":"_arbChainAddress","type":"address"},{"internalType":"uint256","name":"_arbGasPrice","type":"uint256"},{"internalType":"uint256","name":"_arbGasLimit","type":"uint256"}],"name":"pushBridgeData","outputs":[{"internalType":"bool","name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}
+		const abi: AbiFunction = {"constant":true,"inputs":[{"internalType":"address","name":"_marketAddress","type":"address"},{"internalType":"address","name":"_arbChainAddress","type":"address"},{"internalType":"uint256","name":"_arbGasPrice","type":"uint256"},{"internalType":"uint256","name":"_arbGasLimit","type":"uint256"}],"name":"pushBridgeData","outputs":[{"internalType":"bool","name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"}
 		const result = await this.localCall(abi, [marketAddress, arbChainAddress, arbGasPrice, arbGasLimit], options.sender)
 		return <boolean>result[0]
 	}
