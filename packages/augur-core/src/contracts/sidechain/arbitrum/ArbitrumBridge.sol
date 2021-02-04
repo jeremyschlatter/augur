@@ -33,20 +33,17 @@ contract ArbitrumBridge {
         return true;
     }
 
-    function pushBridgeData (address _marketAddress, address _arbChainAddress, uint256 _arbGasPrice, uint256 _arbGasLimit) external view returns (bool) {
+    function pushBridgeData (address _marketAddress, address _arbChainAddress, uint256 _arbGasPrice, uint256 _arbGasLimit) external returns (bool) {
         ArbChainData memory arbChainData = arbChainsRegistry[_arbChainAddress];
         require(arbChainData.inboxAddress != address(0), "Arbchain not registered");
 
         IMarket _market = IMarket(_marketAddress);
         require(augur.isKnownMarket(_market), "Market doesn't exist");
 
-//        IAugurPushBridge.MarketData memory _marketData = augurPushBridge.bridgeMarket(_market);
-//        bytes memory fake = bytes("");
-//        bytes memory _marketDataPayload = abi.encodeWithSignature("receiveMarketData(bytes,address)", fake, _marketAddress);
-//        bytes memory _marketDataPayload = abi.encodeWithSignature("receiveMarketData(bytes,address)", _marketData, _marketAddress);
-//        bytes memory _l2MessagePayload = abi.encode(_arbGasLimit, _arbGasPrice, arbChainData.marketGetterAddress, 0, _marketDataPayload);
-//        bytes memory _l2MessagePayload = abi.encodePacked(uint8(1), _arbGasLimit, _arbGasPrice, uint256(uint160(bytes20(arbChainData.marketGetterAddress))), uint256(0), _marketDataPayload);
-//        IGlobalInbox(arbChainData.inboxAddress).sendL2Message(_arbChainAddress, _l2MessagePayload);
+        IAugurPushBridge.MarketData memory _marketData = augurPushBridge.bridgeMarket(_market);
+        bytes memory _marketDataPayload = abi.encodeWithSignature("receiveMarketData(bytes,address)", _marketData, _marketAddress);
+        bytes memory _l2MessagePayload = abi.encodePacked(uint8(1), _arbGasLimit, _arbGasPrice, uint256(uint160(bytes20(arbChainData.marketGetterAddress))), uint256(0), _marketDataPayload);
+        IGlobalInbox(arbChainData.inboxAddress).sendL2Message(_arbChainAddress, _l2MessagePayload);
         return true;
     }
 
