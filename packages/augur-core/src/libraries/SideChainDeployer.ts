@@ -7,7 +7,7 @@ import { updateConfig, abi as ABI } from '@augurproject/artifacts';
 import { Block, BlockTag } from '@ethersproject/providers';
 import { ContractDependenciesEthers } from '@augurproject/contract-dependencies-ethers';
 
-import { stringTo32ByteHex } from './HelperFunctions';
+import {sleep, stringTo32ByteHex} from './HelperFunctions';
 import { Contracts, ContractData } from './Contracts';
 import { Dependencies } from './GenericContractInterfaces';
 import { EthersFastSubmitWallet } from './EthersFastSubmitWallet';
@@ -17,7 +17,7 @@ interface BlockGetter {
 }
 
 const ARBITRUM_OVERRIDES = {
-    gasPrice: 0,
+    gasPrice: 1,
     gasLimit: 21000000
 }
 
@@ -42,10 +42,8 @@ async function deployArbitrumSideChain(
     account: Account,
     contracts: Contracts,
 ): Promise<SDKConfiguration> {
-    const { signer: ethereumSigner } = await setupEthereumDeployer(config, account, {});
-    const { signer: arbitrumSigner, dependencies: arbitrumDependencies, provider: arbitrumProvider } = await setupSideChainDeployer(config, account, ARBITRUM_OVERRIDES);
-
     console.log('Deploying contracts to Ethereum, if not yet deployed.');
+    const { signer: ethereumSigner } = await setupEthereumDeployer(config, account, {});
     const specific: ArbitrumDeploy = (config.deploy.sideChain.specific || {}) as ArbitrumDeploy;
     let { pushBridge, bridge } = specific;
     const { arbChain, globalInbox } = specific;
@@ -54,6 +52,7 @@ async function deployArbitrumSideChain(
     if (!arbChain) throw Error('Must specify deploy.sideChain.specific.arbChain in config.')
 
     console.log('Deploying contracts to Arbitrum, if not yet deployed.');
+    const { signer: arbitrumSigner, dependencies: arbitrumDependencies, provider: arbitrumProvider } = await setupSideChainDeployer(config, account, ARBITRUM_OVERRIDES);
     let { MarketGetter: marketGetter } = config?.sideChain?.addresses || {};
     if (!marketGetter) marketGetter = await construct(config, arbitrumSigner, contracts.get('ArbitrumMarketGetter'), [bridge], ARBITRUM_OVERRIDES);
 
@@ -151,13 +150,14 @@ async function deploySideChainCore(
 ): Promise<SDKConfiguration> {
     const { Cash: cash, RepFeeTarget: repFeeTarget } = config.deploy?.sideChain?.sideChainExternalAddresses || {};
     if (!cash || !repFeeTarget) throw Error('Must populate deploy.sideChain.sideChainExternalAddresses in config.');
+    const delay = delayFactory(config);
 
     const { MarketGetter: marketGetter } = config.sideChain.addresses;
     const { name, sideChainExternalAddresses } = config.deploy.sideChain;
     const uploadBlockNumber = await getBlockNumber(provider);
 
     const addresses = await deployContracts(config, signer, contracts);
-    await registerSideChainContracts(signer, addresses, sideChainExternalAddresses, overrides);
+    await registerSideChainContracts(signer, addresses, sideChainExternalAddresses, delay, overrides);
 
     config = validConfigOrDie(mergeConfig(config, { sideChain: {
         name,
@@ -275,7 +275,7 @@ async function deployContracts(config: SDKConfiguration, signer: ethers.Signer, 
             'SideChainAugurTrading': [ addresses['SideChainAugur'] ],
         };
         const constructorArgs = constructorArgsMap[contractName] || [];
-        addresses[contractName] = await construct(config, signer, contract, constructorArgs); // TODO use overrides, though they seem unnecessary
+        addresses[contractName] = await construct(config, signer, contract, constructorArgs);
     }
     return addresses;
 }
@@ -286,20 +286,30 @@ async function registerSideChainContracts(
     signerOrProvider: SignerOrProvider,
     addresses: Addresses,
     sideChainExternalAddresses: SideChainExternalAddresses,
+    delay: Delay,
     overrides?: ethers.Overrides,
 ) {
     const sideChainAugur = new SideChainAugur(addresses['SideChainAugur'], signerOrProvider);
     const sideChainAugurTrading = new SideChainAugurTrading(addresses['SideChainAugurTrading'], signerOrProvider);
 
+    await delay();
     await sideChainAugur.registerContract('Cash', sideChainExternalAddresses.Cash, overrides);
+    await delay();
     await sideChainAugur.registerContract('ShareToken', addresses['SideChainShareToken'], overrides);
+    await delay();
     await sideChainAugur.registerContract('Affiliates', addresses['Affiliates'], overrides);
+    await delay();
     await sideChainAugur.registerContract('MarketGetter', sideChainExternalAddresses.MarketGetter, overrides);
+    await delay();
     await sideChainAugur.registerContract('RepFeeTarget', sideChainExternalAddresses.RepFeeTarget, overrides);
 
+    await delay();
     await sideChainAugurTrading.registerContract('FillOrder', addresses['SideChainFillOrder'], overrides);
+    await delay();
     await sideChainAugurTrading.registerContract('ZeroXTrade', addresses['SideChainZeroXTrade'], overrides);
+    await delay();
     await sideChainAugurTrading.registerContract('ProfitLoss', addresses['SideChainProfitLoss'], overrides);
+    await delay();
     await sideChainAugurTrading.registerContract('ZeroXExchange', sideChainExternalAddresses.ZeroXExchange, overrides);
 
     const sideChainShareToken = new SideChainShareToken(addresses['SideChainShareToken'], signerOrProvider);
@@ -308,10 +318,15 @@ async function registerSideChainContracts(
     const sideChainProfitLoss = new SideChainProfitLoss(addresses['SideChainProfitLoss'], signerOrProvider);
     const sideChainSimulateTrade = new SideChainSimulateTrade(addresses['SideChainSimulateTrade'], signerOrProvider);
 
+    await delay();
     await sideChainShareToken.initialize(sideChainAugur.address, overrides);
+    await delay();
     await sideChainFillOrder.initialize(sideChainAugur.address, sideChainAugurTrading.address, overrides);
+    await delay();
     await sideChainZeroXTrade.initialize(sideChainAugur.address, sideChainAugurTrading.address, overrides);
+    await delay();
     await sideChainProfitLoss.initialize(sideChainAugur.address, sideChainAugurTrading.address, overrides);
+    await delay();
     await sideChainSimulateTrade.initialize(sideChainAugur.address, sideChainAugurTrading.address, overrides);
 }
 
@@ -332,6 +347,7 @@ async function construct(
         if (price) overrides.gasPrice = price;
     }
     const factory = new ethers.ContractFactory(contract.abi, contract.bytecode, signer);
+    await delayFactory(config)();
     const contractObj = await factory.deploy(...constructorArgs, overrides);
     await contractObj.deployed();
     console.log(`Uploaded contract: ${contract.contractName}: "${contractObj.address}"`);
@@ -340,6 +356,16 @@ async function construct(
 
 async function getBlockNumber(provider: BlockGetter): Promise<number> {
     return provider.getBlock('latest').then(block => block.number);
+}
+
+type Delay = () => Promise<void>;
+function delayFactory(config: SDKConfiguration):  Delay {
+    const delayMS = config.deploy?.sideChain?.delayMS || 0;
+    return async () => {
+        console.log('Time before delay: ', new Date().toTimeString());
+        await sleep(delayMS);
+        console.log('Time after delay: ', new Date().toTimeString());
+    }
 }
 
 export type SignerOrProvider = ethers.Signer | ethers.providers.Provider;
@@ -497,7 +523,8 @@ export async function bridgeMarketToArbitrum(config: SDKConfiguration, account: 
     const arbChainAddress = (config.sideChain.specific as SpecificArbitrum).arbChain;
     const bridge = new ArbitrumBridge(bridgeAddress, signer);
     const { gasPrice, gasLimit } = ARBITRUM_OVERRIDES;
-    await bridge.pushBridgeData(marketAddress, arbChainAddress, new BigNumber(gasPrice), new BigNumber(gasLimit));
+    const r = await bridge.pushBridgeData(marketAddress, arbChainAddress, new BigNumber(gasPrice), new BigNumber(gasLimit));
+    console.log(r)
 }
 
 class ArbitrumBridge implements Contract {
@@ -516,7 +543,7 @@ class ArbitrumBridge implements Contract {
     }
 
     async pushBridgeData(marketAddress: string, arbChainAddress: string, arbGasPrice: BigNumber, arbGasLimit: BigNumber, overrides?: ethers.Overrides) {
-        await this.contract.pushBridgeData(
+        return this.contract.pushBridgeData(
             marketAddress,
             arbChainAddress,
             ethers.BigNumber.from(arbGasPrice.toFixed()),

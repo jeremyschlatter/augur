@@ -163,6 +163,7 @@ export interface SideChainDeploy {
   name: SideChainName,
   specific: TestDeploy|ArbitrumDeploy|MaticDeploy,
   sideChainExternalAddresses?: SideChainExternalAddresses,
+  delayMS?: number, // delay between L2 calls; nonce desync protection
 }
 
 export interface ArbitrumDeploy {
