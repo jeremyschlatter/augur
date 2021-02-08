@@ -88,7 +88,11 @@ import {
 
 import {deployPara, deployParaContracts, deploySideChainContracts} from '../libs/blockchain';
 import {ArbitrumDeploy, isSideChainName} from '@augurproject/utils/build';
-import {bridgeMarketToArbitrum, registerArbitrumChain} from '@augurproject/core/build/libraries/SideChainDeployer';
+import {
+  bridgeMarketToArbitrum,
+  getBridgedMarket,
+  registerArbitrumChain
+} from '@augurproject/core/build/libraries/SideChainDeployer';
 
 // tslint:disable-next-line:import-blacklist
 const compilerOutput = require('@augurproject/artifacts/build/contracts.json');
@@ -303,6 +307,35 @@ export function addScripts(flash: FlashSession) {
       }
 
       await bridgeMarketToArbitrum(this.config, this.accounts[0], market)
+    }
+  });
+
+  flash.addScript({
+    name: 'get-bridged-market',
+    description:
+      'Reflect a market onto a sidechain.',
+    options: [
+      {
+        name: 'name',
+        abbr: 'n',
+        description: 'Which sidechain. Once of: test, arbitrum, matic.',
+      },
+      {
+        name: 'market',
+        abbr: 'm',
+        description: 'Sidechain http(s) node to use for sidechain-side contracts.',
+        required: true
+      },
+    ],
+    async call(this: FlashSession, args: FlashArguments) {
+      const name = args.name as string || this.config?.deploy?.sideChain?.name;
+      const address = args.market as string;
+
+      if (!isSideChainName(name)) {
+        return console.error(`Must specify valid sidechain name in flash call or config, not: ${name}`);
+      }
+      const market = await getBridgedMarket(this.config, this.accounts[0], address);
+      console.log(market);
     }
   });
 

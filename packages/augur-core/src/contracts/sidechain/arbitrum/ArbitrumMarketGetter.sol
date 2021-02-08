@@ -19,9 +19,9 @@ contract ArbitrumMarketGetter is IMarketGetter {
     }
 
     function receiveMarketData(bytes calldata _rawMarketData, address _marketAddress) external isArbitrumBridge returns (bool) {
-       (IAugurPushBridge.MarketData memory _marketData, address _addr) = abi.decode(_rawMarketData, (IAugurPushBridge.MarketData, address));
-       markets[_marketAddress] = _marketData;
-       return true;
+        (IAugurPushBridge.MarketData memory _marketData) = abi.decode(_rawMarketData, (IAugurPushBridge.MarketData));
+        markets[_marketAddress] = _marketData;
+        return true;
     }
 
     function receiveFeeData(bytes calldata _feeData) external isArbitrumBridge returns (bool) {

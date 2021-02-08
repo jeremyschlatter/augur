@@ -28,14 +28,13 @@
       "name": "arbitrum",
       "specific": {
         "arbChain": "0x2e8aF9f74046D3E55202Fcfb893348316B142230",
-        "pushBridge": "0xf693eF53b46333C6EAbF31442cACc070591aeA30",
         "globalInbox": "0xE681857DEfE8b454244e701BA63EfAa078d7eA85"
       },
       "sideChainExternalAddresses": {
-        "MarketGetter": "0xc6e08b7adb9fccd055105a12d7d84c398d37193f",
         "Cash": "0xbb5999bCD565C0393268bD1eD25F0CC088df9DAA",
-        "RepFeeTarget": "0xc6e08b7adb9fccd055105a12d7d84c398d37193f",
-        "ZeroXExchange": "0x4eacd0aF335451709e1e7B570B8Ea68EdEC8bc97"
+        "ZeroXExchange": "0x4eacd0aF335451709e1e7B570B8Ea68EdEC8bc97",
+        "MarketGetter": "0x6ED8CAC2b9BaC78CDe88D1cfB694eD79F4ce8d69",
+        "RepFeeTarget": "0x6ED8CAC2b9BaC78CDe88D1cfB694eD79F4ce8d69"
       }
     }
   },
@@ -134,22 +133,22 @@
   },
   "sideChain": {
     "name": "arbitrum",
-    "uploadBlockNumber": 23316593,
+    "uploadBlockNumber": 23332200,
     "addresses": {
-      "Augur": "0x31BacB4a306B94f5bfb68Dca08a2CB3866A1FeBA",
+      "Augur": "0x610498e76996a6847dd97EdEEe99dD02527E5ebB",
       "Universe": "0x48CB0042B1c0AE139Fd6b83481613a10Af4a32A8",
-      "ShareToken": "0x9239BB2A4FD311bF678923962Ce0Cca763F7B5f5",
+      "ShareToken": "0x6bB573cF7e426073a14872d406F8195bdEA5e39b",
       "Cash": "0xbb5999bCD565C0393268bD1eD25F0CC088df9DAA",
-      "Affiliates": "0xE11EA95544e9C6011E67C30c0f80F76597bEdc51",
-      "AugurTrading": "0x3D541317D40E832DC270eAe4Ad1364E39216632A",
-      "FillOrder": "0xf8b6F724b228b47C320467675aA57644dF215703",
-      "SimulateTrade": "0xB178e918e9Ff7B69345128f0AffE77c24B0c9067",
-      "ZeroXTrade": "0x4354D4D7894d0d7d12095C8A722Ab354E366aC7a",
-      "ProfitLoss": "0x392AE3ADa82A9c9CA6ec6Caf4D64F9613b2af0EC",
-      "MarketGetter": "0xc6e08b7adb9fccd055105a12d7d84c398d37193f",
-      "RepFeeTarget": "0xc6e08b7adb9fccd055105a12d7d84c398d37193f",
+      "Affiliates": "0xAbD75885d49EAf026096C4D15218AbA471DD1100",
+      "AugurTrading": "0x5F9Cf953e9DD2307E1661f66801148fB2Bb64424",
+      "FillOrder": "0x157Db5b22725dF30fD4f1cbA83299C625769519A",
+      "SimulateTrade": "0xf0dC1916355c61253155827e2B8F5A7c96Ba8c54",
+      "ZeroXTrade": "0x19A340606DC95323f6864E8b46c8748Ab1Bf672c",
+      "ProfitLoss": "0xC335657C13b64ba9cE73f6ff26BA0e02B4858bab",
       "ZeroXExchange": "0x4eacd0aF335451709e1e7B570B8Ea68EdEC8bc97",
-      "Bridge": "0xE932D5B876Fb2cAD13665C2f4553c15eB9B2aB89"
+      "MarketGetter": "0x6ED8CAC2b9BaC78CDe88D1cfB694eD79F4ce8d69",
+      "RepFeeTarget": "0x6ED8CAC2b9BaC78CDe88D1cfB694eD79F4ce8d69",
+      "Bridge": "0xFd671e23a2631F8872aE04Baf3EC44D3AA1D22e1"
     },
     "http": "https://kovan3.arbitrum.io/rpc",
     "specific": {

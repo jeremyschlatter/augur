@@ -527,6 +527,13 @@ export async function bridgeMarketToArbitrum(config: SDKConfiguration, account: 
     console.log(r)
 }
 
+export async function getBridgedMarket(config: SDKConfiguration, account: Account, marketAddress: string) {
+    const { signer } = await setupSideChainDeployer(config, account, ARBITRUM_OVERRIDES);
+    const getterAddress = config.sideChain.addresses.MarketGetter;
+    const getter = new ArbitrumMarketGetter(getterAddress, signer);
+    return getter.isValid(marketAddress, ARBITRUM_OVERRIDES);
+}
+
 class ArbitrumBridge implements Contract {
     readonly abi: ethers.ContractInterface = ABI['ArbitrumBridge'];
     readonly contract: ethers.Contract;
@@ -550,5 +557,21 @@ class ArbitrumBridge implements Contract {
             ethers.BigNumber.from(arbGasLimit.toFixed()),
             overrides || {},
         )
+    }
+}
+
+class ArbitrumMarketGetter implements Contract {
+    readonly abi: ethers.ContractInterface = ABI['ArbitrumMarketGetter'];
+    readonly contract: ethers.Contract;
+
+    constructor(
+        readonly address: string,
+        readonly signerOrProvider: SignerOrProvider
+    ) {
+        this.contract = new ethers.Contract(address, this.abi, signerOrProvider);
+    }
+
+    async isValid(marketAddress: string, overrides?: ethers.Overrides) {
+        return this.contract.isValid(marketAddress, overrides || {});
     }
 }
