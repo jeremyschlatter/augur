@@ -28,7 +28,6 @@ contract ArbitrumMarketGetter is IMarketGetter {
         uint256 _fee = abi.decode(_feeData, (uint256));
         reportingFeeDivisor = _fee;
         return true;
-
     }
 
     function getMarket(address _marketAddress) internal view returns (IAugurPushBridge.MarketData memory) {

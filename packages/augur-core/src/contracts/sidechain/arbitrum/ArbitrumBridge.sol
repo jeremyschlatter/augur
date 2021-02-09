@@ -41,7 +41,8 @@ contract ArbitrumBridge {
         require(augur.isKnownMarket(_market), "Market doesn't exist");
 
         IAugurPushBridge.MarketData memory _marketData = augurPushBridge.bridgeMarket(_market);
-        bytes memory _marketDataPayload = abi.encodeWithSignature("receiveMarketData(bytes,address)", _marketData, _marketAddress);
+        bytes memory _blob = abi.encode(_marketData);
+        bytes memory _marketDataPayload = abi.encodeWithSignature("receiveMarketData(bytes,address)", _blob, _marketAddress);
         bytes memory _l2MessagePayload = abi.encodePacked(uint8(1), _arbGasLimit, _arbGasPrice, uint256(uint160(bytes20(arbChainData.marketGetterAddress))), uint256(0), _marketDataPayload);
         IGlobalInbox(arbChainData.inboxAddress).sendL2Message(_arbChainAddress, _l2MessagePayload);
         return true;
