@@ -24,7 +24,7 @@ contract ArbitrumMarketGetter is IMarketGetter {
         return true;
     }
 
-    function receiveFeeData(bytes calldata _feeData) external isArbitrumBridge returns (bool) {
+    function receiveFeeData(uint256 _feeData) external isArbitrumBridge returns (bool) {
         uint256 _fee = abi.decode(_feeData, (uint256));
         reportingFeeDivisor = _fee;
         return true;

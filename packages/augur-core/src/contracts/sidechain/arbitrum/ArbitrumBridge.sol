@@ -54,8 +54,8 @@ contract ArbitrumBridge {
 
         IUniverse _universe = IUniverse(_universeAddress);
         uint256 _fee = augurPushBridge.bridgeReportingFee(_universe);
-        bytes memory _feeData = abi.encodeWithSignature("receiveFeeData(bytes)", _fee);
-        bytes memory _l2MessagePayload = abi.encode(_arbGasLimit, _arbGasPrice, _arbChainData.marketGetterAddress, 0, _feeData);
+        bytes memory _feeData = abi.encodeWithSignature("receiveFeeData(uint256)", _fee);
+        bytes memory _l2MessagePayload = abi.encodePacked(uint8(1), _arbGasLimit, _arbGasPrice, uint256(uint160(bytes20(arbChainData.marketGetterAddress))), uint256(0), _feeData);
         IGlobalInbox(_arbChainData.inboxAddress).sendL2Message(_arbChainAddress, _l2MessagePayload);
         return true;
     }
